@@ -1,0 +1,7 @@
+# AppleQuest artifacts
+games/
+*.json
+__pycache__/
+*.pyc
+.venv/
+venv/

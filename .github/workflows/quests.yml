@@ -1,0 +1,73 @@
+name: Quests
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    # Once a day at an off-peak minute. The random delay step below shifts the
+    # actual run by 0-45 minutes so your account doesn't do quests at exactly
+    # the same second every day like every other fork of this repo does.
+    - cron: "43 2 * * *"
+
+permissions: {}
+
+concurrency:
+  group: quests
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Secrets are never copied when a repo is forked. If TOKEN is missing
+      # (fresh fork, forgotten secret), fail with setup instructions instead
+      # of a cryptic Python error.
+      - name: Check TOKEN secret
+        env:
+          TOKEN: ${{ secrets.TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "::error::TOKEN secret is missing or empty."
+            echo ""
+            echo "=========================================="
+            echo " Setup (takes 2 minutes):"
+            echo "=========================================="
+            echo " 1. Repo Settings -> Secrets and variables -> Actions -> New repository secret"
+            echo " 2. Name:  TOKEN"
+            echo "    Value: your Discord account token"
+            echo " 3. Optional secrets:"
+            echo "    MODE=1         only complete video quests (safest mode)"
+            echo "    WEBHOOK_URL=... get notified on your phone when quests finish"
+            echo "    AUTO_CLAIM=1   claim rewards automatically (captcha risk)"
+            echo " 4. Re-run this workflow from the Actions tab"
+            echo "=========================================="
+            exit 1
+          fi
+
+      - name: Random delay (breaks the every-fork-at-the-same-minute signature)
+        run: sleep $((RANDOM % 2700))
+
+      - name: Run AppleQuest
+        env:
+          TOKEN: ${{ secrets.TOKEN }}
+          WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
+          AUTO_CLAIM: ${{ secrets.AUTO_CLAIM }}
+          MODE: ${{ secrets.MODE }}
+        run: |
+          if [ "$MODE" = "1" ]; then
+            echo "[*] MODE=1 -> video-only mode (safest)"
+            python main.py --ci --only-video
+          else
+            echo "[*] default mode -> all quest types"
+            python main.py --ci
+          fi
+
+      # GitHub disables scheduled workflows after 60 days without repo
+      # activity. If runs stop: re-enable this workflow in the Actions tab
+      # and push any small commit to the default branch.
