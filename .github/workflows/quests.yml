@@ -1,5 +1,7 @@
 name: Quests
 
+# AppleQuest daily runner - see README for secret setup
+
 on:
   workflow_dispatch: {}
   schedule:
