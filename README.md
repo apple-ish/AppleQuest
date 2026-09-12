@@ -17,7 +17,8 @@ Run it from GitHub (works from your phone) or locally on Windows.
 
 ## Quick start (GitHub — works from Android)
 
-**1. Fork this repo** (button top-right).
+**1. Fork this repo** (button top-right of
+[apple-ish/AppleQuest](https://github.com/apple-ish/AppleQuest)).
 
 **2. Add your token:** your fork → **Settings** → **Secrets and variables** →
 **Actions** → **New repository secret**:
