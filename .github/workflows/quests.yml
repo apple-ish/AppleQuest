@@ -10,7 +10,8 @@ on:
     # the same second every day like every other fork of this repo does.
     - cron: "43 2 * * *"
 
-permissions: {}
+permissions:
+  contents: read
 
 concurrency:
   group: quests
