@@ -203,8 +203,20 @@ def parse_quest(raw: dict) -> Quest:
 
     legacy_app_id = _get(config, "application.id", "applicationId")
 
+    # Raw REST payloads are snake_case (task_config_v2); client-store and
+    # legacy payloads are camelCase (taskConfigV2). Snake first, camel fallback.
     task_specs: dict[str, Any] = {}
-    for path in ("taskConfigV2.tasks", "taskConfig.tasks", "taskConfigV2", "taskConfig"):
+    for path in (
+        "task_config_v2.tasks",
+        "taskConfigV2.tasks",
+        "task_config.tasks",
+        "taskConfig.tasks",
+        "task_config_v2",
+        "taskConfigV2",
+        "task_config",
+        "taskConfig",
+        "tasks",
+    ):
         tasks = _get(config, path)
         if isinstance(tasks, dict) and tasks:
             task_specs = tasks

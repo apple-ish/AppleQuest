@@ -1,4 +1,4 @@
-"""End-to-end smoke test for AppleQuest against a mock Discord API.
+﻿"""End-to-end smoke test for AppleQuest against a mock Discord API.
 
 Covers: model parsing, /quests/@me 404 fallback, the local interactive flow
 (dummy-exe client mode for game quests, real process launch), the CI flow
@@ -58,7 +58,7 @@ def quests_payload():
                 "expires_at": iso,
                 "messages": {"quest_name": "Watch a Trailer"},
                 "rewards_config": {"rewards": [{"type": "ORBS", "messages": {"name": "15 Orbs"}}]},
-                "taskConfigV2": {"tasks": {"WATCH_VIDEO": {"target": 15, "applications": [{"id": "123"}]}}},
+                "task_config_v2": {"tasks": {"WATCH_VIDEO": {"target": 15, "applications": [{"id": "123"}]}}},
             },
             "user_status": {"progress": {"WATCH_VIDEO": {"value": STATE["video_progress"]}}},
         },
@@ -68,7 +68,7 @@ def quests_payload():
             "config": {
                 "messages": {"quest_name": "Play Fake Game"},
                 "rewards_config": {"rewards": [{"messages": {"name": "Avatar Hat"}}]},
-                "taskConfigV2": {
+                "task_config_v2": {
                     "tasks": {
                         "PLAY_ON_DESKTOP": {"target": 10, "applications": [{"id": "999"}]},
                         "STREAM_ON_DESKTOP": {"target": 900, "applications": [{"id": "999"}]},
@@ -82,7 +82,7 @@ def quests_payload():
             "config": {
                 "messages": {"quest_name": "Stream Something"},
                 "rewards_config": {"rewards": [{"messages": {"name": "Decoration"}}]},
-                "taskConfigV2": {"tasks": {"STREAM_ON_DESKTOP": {"target": 900, "applications": [{"id": "999"}]}}},
+                "task_config_v2": {"tasks": {"STREAM_ON_DESKTOP": {"target": 900, "applications": [{"id": "999"}]}}},
             },
             "user_status": {},
         },
@@ -91,7 +91,7 @@ def quests_payload():
             "config": {
                 "messages": {"quest_name": "Get an Achievement"},
                 "rewards_config": {"rewards": [{"messages": {"name": "Badge"}}]},
-                "taskConfigV2": {"tasks": {"ACHIEVEMENT_IN_ACTIVITY": {"target": 1, "applications": [{"id": "555"}]}}},
+                "task_config_v2": {"tasks": {"ACHIEVEMENT_IN_ACTIVITY": {"target": 1, "applications": [{"id": "555"}]}}},
             },
             "user_status": {},
         },
@@ -101,7 +101,7 @@ def quests_payload():
             "config": {
                 "messages": {"quest_name": "Mobile Orbs Intro"},
                 "rewards_config": {"rewards": [{"messages": {"name": "5 Orbs"}}]},
-                "taskConfigV2": {"tasks": {"WATCH_VIDEO_ON_MOBILE": {"target": 12, "applications": [{"id": "321"}]}}},
+                "task_config_v2": {"tasks": {"WATCH_VIDEO_ON_MOBILE": {"target": 12, "applications": [{"id": "321"}]}}},
             },
             "user_status": {"progress": {"WATCH_VIDEO_ON_MOBILE": {"value": STATE["video_progress_q5"]}}},
         },
@@ -110,7 +110,7 @@ def quests_payload():
             "config": {
                 "messages": {"quest_name": "Play On Xbox"},
                 "rewards_config": {"rewards": [{"messages": {"name": "Xbox Reward"}}]},
-                "taskConfigV2": {"tasks": {"PLAY_ON_XBOX": {"target": 20, "applications": [{"id": "777"}]}}},
+                "task_config_v2": {"tasks": {"PLAY_ON_XBOX": {"target": 20, "applications": [{"id": "777"}]}}},
             },
             "user_status": {},
         },
@@ -223,7 +223,7 @@ mixed = {
     "config": {
         "messages": {"quest_name": "Mixed"},
         "rewards_config": {"rewards": [{"messages": {"name": "R"}}]},
-        "taskConfigV2": {
+        "task_config_v2": {
             "tasks": {
                 "STREAM_ON_DESKTOP": {"target": 900, "applications": [{"id": "9"}]},
                 "PLAY_ON_DESKTOP": {"target": 900, "applications": [{"id": "9"}]},
@@ -240,9 +240,9 @@ legacy = {
     "id": "m2",
     "config": {
         "messages": {"questName": "LegacyCamel"},
-        "rewardsConfig": {"rewards": [{"messages": {"name": "RR"}}]},
+        "rewards_config": {"rewards": [{"messages": {"name": "RR"}}]},
         "application": {"id": "42"},
-        "taskConfig": {"tasks": {"PLAY_ON_DESKTOP": {"target": 600}}},
+        "task_config": {"tasks": {"PLAY_ON_DESKTOP": {"target": 600}}},
     },
     "userStatus": {"enrolledAt": 1, "completedAt": None, "progress": {"PLAY_ON_DESKTOP": {"value": 120}}},
 }
@@ -252,13 +252,32 @@ check("legacy app id + progress read", q.best_task().app_id == "42" and q.progre
 
 console = models.parse_quest({
     "id": "m3",
-    "config": {"messages": {"quest_name": "X"}, "taskConfigV2": {"tasks": {"PLAY_ON_XBOX": {"target": 60}}}},
+    "config": {"messages": {"quest_name": "X"}, "task_config_v2": {"tasks": {"PLAY_ON_XBOX": {"target": 60}}}},
     "user_status": {},
 })
 check("console task supported via heartbeat", console.best_task().supported is True and console.best_task().group == "GAME")
 
 blocked, suspended = models.find_account_blocks({"quests": [], "quest_enrollment_blocked_until": "2026-10-01"})
 check("enrollment block detected", blocked == "2026-10-01" and suspended is None)
+
+snake = {
+    "id": "m4",
+    "config": {
+        "expires_at": "2026-09-15T00:00:00Z",
+        "messages": {"quest_name": "Real Shape"},
+        "rewards_config": {"rewards": [{"messages": {"name": "700 Orbs"}}]},
+        "task_config_v2": {
+            "tasks": {
+                "PLAY_ON_DESKTOP": {"target": 900, "applications": [{"id": "999"}]},
+            }
+        },
+    },
+    "user_status": {"enrolled_at": None, "progress": {}},
+}
+q = models.parse_quest(snake)
+check("snake_case task_config_v2 parses (real REST shape)",
+      q.best_task() is not None and q.best_task().group == "GAME" and q.best_task().app_id == "999",
+      f"tasks={q.tasks}")
 
 # ---- api: 404 fallback --------------------------------------------------------
 print("== api fallback")
@@ -531,3 +550,4 @@ if failures:
     print(ci_out)
     sys.exit(1)
 print("SMOKE TEST PASSED")
+
