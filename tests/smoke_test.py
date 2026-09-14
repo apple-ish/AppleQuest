@@ -279,6 +279,15 @@ check("snake_case task_config_v2 parses (real REST shape)",
       q.best_task() is not None and q.best_task().group == "GAME" and q.best_task().app_id == "999",
       f"tasks={q.tasks}")
 
+# ---- unit: stub survives non-Windows platforms (CI runs Ubuntu) ---------------
+print("== stub platform guards")
+if sys.platform == "win32":
+    check("discord_running() callable on Windows", isinstance(stub.discord_running(), bool))
+    check("running_process_names() callable on Windows", isinstance(stub.running_process_names(), set))
+else:
+    check("discord_running() is False off-Windows (no ValueError)", stub.discord_running() is False)
+    check("running_process_names() empty off-Windows", stub.running_process_names() == set())
+
 # ---- api: 404 fallback --------------------------------------------------------
 print("== api fallback")
 api = DiscordAPI("fake-token", base_url=f"http://127.0.0.1:{port}/api/v10", identity=identity)

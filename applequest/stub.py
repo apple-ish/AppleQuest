@@ -14,9 +14,14 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
+IS_WINDOWS = sys.platform == "win32"
 CREATE_NO_WINDOW = 0x08000000
+# subprocess raises ValueError for creationflags on non-Windows platforms,
+# which would crash the whole run on the Linux CI runner.
+_SUBPROCESS_FLAGS = CREATE_NO_WINDOW if IS_WINDOWS else 0
 
 STUB_SOURCES = [
     r"C:\Windows\System32\ping.exe",
@@ -84,7 +89,7 @@ def launch_stub(exe_path: Path, kind: str, duration_seconds: int) -> subprocess.
         args = [str(exe_path), "/t"]
     return subprocess.Popen(
         args,
-        creationflags=CREATE_NO_WINDOW,
+        creationflags=_SUBPROCESS_FLAGS,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
         stdin=subprocess.DEVNULL,
@@ -92,13 +97,15 @@ def launch_stub(exe_path: Path, kind: str, duration_seconds: int) -> subprocess.
 
 
 def discord_running() -> bool:
+    if not IS_WINDOWS:
+        return False
     try:
         output = subprocess.run(
             ["tasklist", "/FI", "IMAGENAME eq Discord.exe"],
             capture_output=True,
             text=True,
             timeout=15,
-            creationflags=CREATE_NO_WINDOW,
+            creationflags=_SUBPROCESS_FLAGS,
         ).stdout
         return "Discord.exe" in output
     except (OSError, subprocess.SubprocessError):
@@ -119,13 +126,15 @@ def stop(proc: subprocess.Popen | None) -> None:
 
 
 def running_process_names() -> set[str]:
+    if not IS_WINDOWS:
+        return set()
     try:
         output = subprocess.run(
             ["tasklist", "/FO", "CSV", "/NH"],
             capture_output=True,
             text=True,
             timeout=20,
-            creationflags=CREATE_NO_WINDOW,
+            creationflags=_SUBPROCESS_FLAGS,
         ).stdout
     except (OSError, subprocess.SubprocessError):
         return set()
